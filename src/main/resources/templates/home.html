@@ -1,0 +1,163 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Trang Chủ</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+<nav class="navbar navbar-expand-lg navbar-light bg-light mb-4">
+    <div class="container-fluid">
+        <a class="navbar-brand" href="/">Cửa Hàng</a>
+        <div class="collapse navbar-collapse">
+            <ul class="navbar-nav me-auto mb-2 mb-lg-0">
+                <li class="nav-item"><a class="nav-link" href="/categories">Quản lý Category</a></li>
+                <li class="nav-item"><a class="nav-link" href="/products">Quản lý Product</a></li>
+            </ul>
+        </div>
+    </div>
+</nav>
+
+<div class="container">
+    <h2>Trang chủ - Cửa hàng (Dùng GraphQL API)</h2>
+
+    <div class="mt-4">
+        <h4>Chọn danh mục để xem sản phẩm</h4>
+        <select id="categorySelect" class="form-select w-25">
+            <option value="">-- Chọn danh mục --</option>
+        </select>
+    </div>
+
+    <div class="mt-4">
+        <h4>Danh sách Sản phẩm</h4>
+        <div class="row" id="productList">
+            <!-- Sản phẩm sẽ được hiển thị ở đây -->
+        </div>
+    </div>
+</div>
+
+<script>
+    const graphqlUrl = '/graphql';
+
+    $(document).ready(function() {
+        loadCategories();
+        loadAllProducts();
+
+        $('#categorySelect').change(function() {
+            let catId = $(this).val();
+            if (catId) {
+                loadProductsByCategory(catId);
+            } else {
+                loadAllProducts();
+            }
+        });
+    });
+
+    function loadCategories() {
+        const query = `
+            query {
+                getAllCategories {
+                    categoryId
+                    name
+                }
+            }
+        `;
+        $.ajax({
+            url: graphqlUrl,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ query: query }),
+            success: function(response) {
+                const categories = response.data.getAllCategories;
+                const select = $('#categorySelect');
+                categories.forEach(c => {
+                    select.append(`<option value="${c.categoryId}">${c.name}</option>`);
+                });
+            }
+        });
+    }
+
+    function loadAllProducts() {
+        const query = `
+            query {
+                getAllProductsSortedByPrice {
+                    productId
+                    productName
+                    unitPrice
+                    description
+                    category {
+                        name
+                    }
+                }
+            }
+        `;
+        $.ajax({
+            url: graphqlUrl,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ query: query }),
+            success: function(response) {
+                renderProducts(response.data.getAllProductsSortedByPrice);
+            }
+        });
+    }
+
+    function loadProductsByCategory(categoryId) {
+        const query = `
+            query getByCategory($catId: ID!) {
+                getProductsByCategory(categoryId: $catId) {
+                    productId
+                    productName
+                    unitPrice
+                    description
+                    category {
+                        name
+                    }
+                }
+            }
+        `;
+        const variables = { catId: categoryId };
+        
+        $.ajax({
+            url: graphqlUrl,
+            method: 'POST',
+            contentType: 'application/json',
+            data: JSON.stringify({ query: query, variables: variables }),
+            success: function(response) {
+                renderProducts(response.data.getProductsByCategory);
+            }
+        });
+    }
+
+    function renderProducts(products) {
+        const list = $('#productList');
+        list.empty();
+        if (!products || products.length === 0) {
+            list.append('<p>Không có sản phẩm nào.</p>');
+            return;
+        }
+
+        products.forEach(p => {
+            let catName = p.category ? p.category.name : 'Không có';
+            let card = `
+                <div class="col-md-3 mb-4">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <h5 class="card-title">${p.productName}</h5>
+                            <h6 class="card-subtitle mb-2 text-muted">Giá: ${p.unitPrice}</h6>
+                            <p class="card-text">${p.description || ''}</p>
+                        </div>
+                        <div class="card-footer text-muted">
+                            Danh mục: ${catName}
+                        </div>
+                    </div>
+                </div>
+            `;
+            list.append(card);
+        });
+    }
+</script>
+</body>
+</html>

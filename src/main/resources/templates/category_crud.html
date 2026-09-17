@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Category CRUD</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+<div class="container mt-5">
+    <h2>Quản lý Category</h2>
+    <button class="btn btn-success mb-3" onclick="showCreateModal()"><i class="fas fa-plus"></i> Thêm Category</button>
+    <table class="table table-bordered">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Name</th>
+            <th>Hành động</th>
+        </tr>
+        </thead>
+        <tbody id="categoryTableBody">
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Create/Update -->
+<div class="modal fade" id="categoryModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Thêm Category</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="categoryForm">
+                    <input type="hidden" id="categoryId">
+                    <div class="mb-3">
+                        <label>Tên Category</label>
+                        <input type="text" id="categoryName" class="form-control" required>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const apiUrl = '/api/category';
+
+    $(document).ready(function() {
+        loadCategories();
+
+        $('#categoryForm').submit(function(e) {
+            e.preventDefault();
+            let id = $('#categoryId').val();
+            let name = $('#categoryName').val();
+
+            if (id) {
+                // Update
+                $.ajax({
+                    url: apiUrl + '/updateCategory',
+                    type: 'PUT',
+                    data: { categoryId: id, categoryName: name },
+                    success: function() {
+                        $('#categoryModal').modal('hide');
+                        loadCategories();
+                    }
+                });
+            } else {
+                // Create
+                $.ajax({
+                    url: apiUrl + '/addCategory',
+                    type: 'POST',
+                    data: { categoryName: name },
+                    success: function() {
+                        $('#categoryModal').modal('hide');
+                        loadCategories();
+                    }
+                });
+            }
+        });
+    });
+
+    function loadCategories() {
+        $.getJSON(apiUrl, function(response) {
+            let tbody = $('#categoryTableBody');
+            tbody.empty();
+            let categories = response.body;
+            categories.forEach(c => {
+                let tr = `<tr>
+                    <td>${c.categoryId}</td>
+                    <td>${c.name}</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" onclick="showEditModal(${c.categoryId}, '${c.name}')"><i class="fas fa-edit"></i> Sửa</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteCategory(${c.categoryId})"><i class="fas fa-trash"></i> Xóa</button>
+                    </td>
+                </tr>`;
+                tbody.append(tr);
+            });
+        });
+    }
+
+    function showCreateModal() {
+        $('#modalTitle').text('Thêm Category');
+        $('#categoryId').val('');
+        $('#categoryName').val('');
+        $('#categoryModal').modal('show');
+    }
+
+    function showEditModal(id, name) {
+        $('#modalTitle').text('Sửa Category');
+        $('#categoryId').val(id);
+        $('#categoryName').val(name);
+        $('#categoryModal').modal('show');
+    }
+
+    function deleteCategory(id) {
+        if (confirm('Bạn có chắc chắn muốn xóa?')) {
+            $.ajax({
+                url: apiUrl + '/deleteCategory?categoryId=' + id,
+                type: 'DELETE',
+                success: function() {
+                    loadCategories();
+                }
+            });
+        }
+    }
+</script>
+</body>
+</html>

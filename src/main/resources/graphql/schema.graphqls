@@ -1,0 +1,43 @@
+type Category {
+    categoryId: ID!
+    name: String!
+    products: [Product]
+}
+
+type Product {
+    productId: ID!
+    productName: String!
+    quantity: Int!
+    unitPrice: Float!
+    images: String
+    description: String
+    discount: Float!
+    status: Int!
+    category: Category
+}
+
+type Query {
+    getAllProductsSortedByPrice: [Product]
+    getProductsByCategory(categoryId: ID!): [Product]
+    
+    # Category queries
+    getAllCategories: [Category]
+    getCategoryById(categoryId: ID!): Category
+    searchCategories(name: String!, page: Int!, size: Int!): [Category]
+    
+    # Product queries
+    getProductById(productId: ID!): Product
+    searchProducts(name: String!, page: Int!, size: Int!): [Product]
+}
+
+type Mutation {
+    # Category mutations
+    createCategory(name: String!): Category
+    updateCategory(categoryId: ID!, name: String!): Category
+    deleteCategory(categoryId: ID!): Boolean
+    
+    # Product mutations
+    createProduct(productName: String!, unitPrice: Float!, quantity: Int!, discount: Float!, description: String, status: Int!, categoryId: ID!): Product
+    updateProduct(productId: ID!, productName: String!, unitPrice: Float!, quantity: Int!, discount: Float!, description: String, status: Int!, categoryId: ID!): Product
+    deleteProduct(productId: ID!): Boolean
+}

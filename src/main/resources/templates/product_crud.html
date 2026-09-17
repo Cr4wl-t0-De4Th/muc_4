@@ -1,0 +1,196 @@
+<!DOCTYPE html>
+<html lang="vi" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Product CRUD</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta2/css/all.min.css">
+    <script src="https://code.jquery.com/jquery-3.6.4.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.0.2/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+<div class="container mt-5">
+    <h2>Quản lý Product</h2>
+    <button class="btn btn-success mb-3" onclick="showCreateModal()"><i class="fas fa-plus"></i> Thêm Product</button>
+    <table class="table table-bordered">
+        <thead>
+        <tr>
+            <th>ID</th>
+            <th>Tên</th>
+            <th>Giá</th>
+            <th>Số lượng</th>
+            <th>Category ID</th>
+            <th>Hành động</th>
+        </tr>
+        </thead>
+        <tbody id="productTableBody">
+        </tbody>
+    </table>
+</div>
+
+<!-- Modal Create/Update -->
+<div class="modal fade" id="productModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="modalTitle">Thêm Product</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="productForm">
+                    <input type="hidden" id="productId">
+                    <div class="mb-3">
+                        <label>Tên Product</label>
+                        <input type="text" id="productName" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Đơn giá</label>
+                        <input type="number" id="unitPrice" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Số lượng</label>
+                        <input type="number" id="quantity" class="form-control" required>
+                    </div>
+                    <div class="mb-3">
+                        <label>Mô tả</label>
+                        <input type="text" id="description" class="form-control">
+                    </div>
+                    <div class="mb-3">
+                        <label>Giảm giá</label>
+                        <input type="number" id="discount" class="form-control" value="0">
+                    </div>
+                    <div class="mb-3">
+                        <label>Trạng thái</label>
+                        <input type="number" id="status" class="form-control" value="1">
+                    </div>
+                    <div class="mb-3">
+                        <label>Category</label>
+                        <select id="categoryId" class="form-select" required>
+                            <!-- options will be populated via AJAX -->
+                        </select>
+                    </div>
+                    <button type="submit" class="btn btn-primary">Lưu</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const apiUrl = '/api/product';
+    const categoryApiUrl = '/api/category';
+    let categoryMap = {};
+
+    $(document).ready(function() {
+        loadCategories();
+        
+        $('#productForm').submit(function(e) {
+            e.preventDefault();
+            let id = $('#productId').val();
+            let data = {
+                productName: $('#productName').val(),
+                unitPrice: $('#unitPrice').val(),
+                quantity: $('#quantity').val(),
+                description: $('#description').val(),
+                discount: $('#discount').val(),
+                status: $('#status').val(),
+                categoryId: $('#categoryId').val()
+            };
+
+            if (id) {
+                data.productId = id;
+                $.ajax({
+                    url: apiUrl + '/updateProduct',
+                    type: 'PUT',
+                    data: data,
+                    success: function() {
+                        $('#productModal').modal('hide');
+                        loadProducts();
+                    }
+                });
+            } else {
+                $.ajax({
+                    url: apiUrl + '/addProduct',
+                    type: 'POST',
+                    data: data,
+                    success: function() {
+                        $('#productModal').modal('hide');
+                        loadProducts();
+                    }
+                });
+            }
+        });
+    });
+
+    function loadCategories() {
+        $.getJSON(categoryApiUrl, function(response) {
+            let categories = response.body;
+            let select = $('#categoryId');
+            select.empty();
+            select.append('<option value="">-- Chọn danh mục --</option>');
+            categories.forEach(c => {
+                categoryMap[c.categoryId] = c.name;
+                select.append(`<option value="${c.categoryId}">${c.name}</option>`);
+            });
+            loadProducts();
+        });
+    }
+
+    function loadProducts() {
+        $.getJSON(apiUrl, function(response) {
+            let tbody = $('#productTableBody');
+            tbody.empty();
+            let products = response.body;
+            products.forEach(p => {
+                let catId = p.category ? p.category.categoryId : '';
+                let catName = catId ? categoryMap[catId] : 'N/A';
+                let tr = `<tr>
+                    <td>${p.productId}</td>
+                    <td>${p.productName}</td>
+                    <td>${p.unitPrice}</td>
+                    <td>${p.quantity}</td>
+                    <td>${catName}</td>
+                    <td>
+                        <button class="btn btn-warning btn-sm" onclick="showEditModal(${p.productId}, '${p.productName}', ${p.unitPrice}, ${p.quantity}, '${p.description}', ${p.discount}, ${p.status}, ${catId})"><i class="fas fa-edit"></i> Sửa</button>
+                        <button class="btn btn-danger btn-sm" onclick="deleteProduct(${p.productId})"><i class="fas fa-trash"></i> Xóa</button>
+                    </td>
+                </tr>`;
+                tbody.append(tr);
+            });
+        });
+    }
+
+    function showCreateModal() {
+        $('#modalTitle').text('Thêm Product');
+        $('#productId').val('');
+        $('#productForm')[0].reset();
+        $('#productModal').modal('show');
+    }
+
+    function showEditModal(id, name, price, qty, desc, disc, status, catId) {
+        $('#modalTitle').text('Sửa Product');
+        $('#productId').val(id);
+        $('#productName').val(name);
+        $('#unitPrice').val(price);
+        $('#quantity').val(qty);
+        $('#description').val(desc);
+        $('#discount').val(disc);
+        $('#status').val(status);
+        $('#categoryId').val(catId);
+        $('#productModal').modal('show');
+    }
+
+    function deleteProduct(id) {
+        if (confirm('Bạn có chắc chắn muốn xóa?')) {
+            $.ajax({
+                url: apiUrl + '/deleteProduct?productId=' + id,
+                type: 'DELETE',
+                success: function() {
+                    loadProducts();
+                }
+            });
+        }
+    }
+</script>
+</body>
+</html>
